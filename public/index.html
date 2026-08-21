@@ -296,12 +296,67 @@ function to24h(h, m, ap) {
   return String(h).padStart(2, '0') + ':' + m;
 }
 
-function parseScheduleText(text) {
+const TIME_RE = /(\d{1,2}):(\d{2})\s*([AP]M)\s*[-–]\s*(\d{1,2}):(\d{2})\s*([AP]M)/i;
+
+// UT Direct's class list table copies as tab-separated columns (Unique, Course,
+// Title, Bldg, Room, Days, Time, Remarks). A course with more than one meeting
+// pattern (e.g. lecture + separate discussion time) has multiple stacked values
+// inside the Bldg/Room/Days/Time cells — copying that renders as EXTRA newlines
+// inside the row. The rule that recovers the real columns: within one row, a
+// newline means "another value in the same column", a tab means "next column".
+// A new row starts wherever a line begins with a 5-digit unique number.
+function parseUtDirectTsv(text) {
+  const rowStartRe = /^\d{5}\t(?=[A-Za-z])/gm;
+  const starts = [];
+  let m;
+  while ((m = rowStartRe.exec(text))) starts.push(m.index);
+  if (starts.length === 0) return null;
+  starts.push(text.length);
+
+  const results = [];
+  for (let r = 0; r < starts.length - 1; r++) {
+    const chunk = text.slice(starts[r], starts[r + 1]);
+    const cols = [[], [], [], [], [], [], [], []]; // unique,course,title,bldg,room,days,time,remarks
+    let colIdx = 0;
+    let cur = '';
+    const flush = (delim) => {
+      if (cur !== '') cols[Math.min(colIdx, 7)].push(cur);
+      cur = '';
+      if (delim === '\t') colIdx = Math.min(colIdx + 1, 7);
+    };
+    for (const ch of chunk) {
+      if (ch === '\t' || ch === '\n') flush(ch);
+      else cur += ch;
+    }
+    flush(null);
+
+    const course = cols[1].join(' ').trim();
+    const title = cols[2].filter(Boolean).join(' ').trim();
+    const [bldg, room, days, time] = [cols[3], cols[4], cols[5], cols[6]];
+    const n = Math.max(days.length, time.length);
+    for (let i = 0; i < n; i++) {
+      const dayCodes = parseDaysToken(days[i] || '');
+      const tm = (time[i] || '').match(TIME_RE);
+      if (dayCodes.length === 0 || !tm) continue;
+      results.push({
+        title: [course, title].filter(Boolean).join(' '),
+        days: dayCodes,
+        start: to24h(tm[1], tm[2], tm[3]),
+        end: to24h(tm[4], tm[5], tm[6]),
+        location: `${bldg[i] || ''} ${room[i] || ''}`.trim(),
+      });
+    }
+  }
+  return results;
+}
+
+// Fallback for plain unstructured text (typical OCR output): scan line by
+// line for a days-token immediately followed by a time range.
+function parseLinesHeuristic(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-  const timeRe = /(\d{1,2}):(\d{2})\s*([AP]M)\s*[-–]\s*(\d{1,2}):(\d{2})\s*([AP]M)/i;
   const results = [];
   lines.forEach(line => {
-    const tm = line.match(timeRe);
+    const tm = line.match(TIME_RE);
     if (!tm) return;
     const before = line.slice(0, tm.index).trim();
     const after = line.slice(tm.index + tm[0].length).trim();
@@ -326,6 +381,12 @@ function parseScheduleText(text) {
     });
   });
   return results;
+}
+
+function parseScheduleText(text) {
+  const tsv = parseUtDirectTsv(text);
+  if (tsv && tsv.length > 0) return tsv;
+  return parseLinesHeuristic(text);
 }
 
 function applyParsedClasses(classes) {
