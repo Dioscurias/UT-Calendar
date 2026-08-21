@@ -435,6 +435,13 @@ function parseScheduleText(text) {
   return parseLinesHeuristic(text);
 }
 
+function isRowEmpty(tr) {
+  const inputs = tr.querySelectorAll('input[type=text]');
+  const hasText = inputs[0].value.trim() !== '' || inputs[1].value.trim() !== '';
+  const hasDays = tr.querySelectorAll('.day-toggle.on').length > 0;
+  return !hasText && !hasDays;
+}
+
 function applyParsedClasses(classes) {
   if (classes.length === 0) {
     setStatus('No classes recognized. Try a clearer screenshot, or paste the text instead.', 'err');
@@ -449,6 +456,15 @@ function applyParsedClasses(classes) {
       if (!c.title) c.title = lastTitle || 'Untitled Course';
       else lastTitle = c.title;
     });
+
+    // The page always starts with one blank row so there's somewhere to type
+    // a class in by hand. Once real classes come in, that blank row is just
+    // confusing clutter — drop it if it was never touched.
+    const existingRows = Array.from(document.querySelectorAll('#classRows tr'));
+    if (existingRows.length === 1 && isRowEmpty(existingRows[0])) {
+      existingRows[0].remove();
+    }
+
     classes.forEach(c => addRow(c));
     setStatus(`Extracted ${classes.length} class${classes.length === 1 ? '' : 'es'} — verify below.`, 'ok');
   }
