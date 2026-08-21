@@ -105,20 +105,15 @@
 <body>
 <div class="wrap">
   <h1>UT Class Schedule → Google Calendar</h1>
-  <p class="sub">Screenshot your class list, drop it below, verify the extracted classes, and download a calendar file for the whole semester.</p>
-
-  <div class="card">
-    <h2>Site password</h2>
-    <p class="hint">This page is public; the password just stops strangers from spending your Anthropic API budget. Remembered for this browser tab.</p>
-    <input type="password" id="sitePassword" placeholder="Site password" style="max-width:260px">
-  </div>
+  <p class="sub">Screenshot your class list, drop it below, verify the extracted classes, and download a calendar file for the whole semester. Runs entirely in your browser — no server, no account, no AI involved.</p>
 
   <div class="card">
     <h2><span class="step-num">1</span> Add a screenshot</h2>
     <p class="hint">
       Log in to <code>utdirect.utexas.edu</code>, open your class list / schedule page, and take a screenshot
       (Mac: <code>⌘⇧4</code> then drag, or <code>⌘⌃⇧4</code> to copy straight to your clipboard). Make sure your
-      whole schedule is visible before capturing.
+      whole schedule is visible before capturing. Text is read with OCR (optical character recognition) —
+      it can misread the occasional character, so double-check the table below.
     </p>
     <div class="dropzone" id="dropzone">
       <div><strong>Click to choose a file</strong>, drag one here, or paste (⌘V) a screenshot from your clipboard</div>
@@ -129,11 +124,19 @@
       <button class="primary" id="extractBtn" disabled>Extract classes from screenshot</button>
       <span id="status" class="status-info"></span>
     </div>
+    <details style="margin-top:14px">
+      <summary class="hint" style="cursor:pointer">Or paste the schedule text directly instead</summary>
+      <p class="hint" style="margin-top:10px">More reliable than OCR if you can just select and copy the text on the page.</p>
+      <textarea id="pasteBox" style="width:100%;min-height:90px;background:var(--field-bg);color:var(--ink);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.8rem" placeholder="C S 313E  52625  Elements of Software Design  MWF  9:00AM-9:50AM  GDC 2.216"></textarea>
+      <div class="row-actions">
+        <button id="parseTextBtn">Parse pasted text</button>
+      </div>
+    </details>
   </div>
 
   <div class="card">
     <h2><span class="step-num">2</span> Verify / edit your classes</h2>
-    <p class="hint">Check what got extracted — vision reading can occasionally misread a time or room. Click day letters to toggle.</p>
+    <p class="hint">Check what got extracted — OCR can occasionally misread a time or room. Click day letters to toggle.</p>
     <table>
       <thead>
         <tr>
@@ -190,6 +193,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
 const DAY_DEFS = [
   {code:'MO', label:'M'}, {code:'TU', label:'T'}, {code:'WE', label:'W'},
@@ -265,57 +269,100 @@ document.addEventListener('paste', (e) => {
   }
 });
 
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+// ---- Text parser (shared by OCR output and pasted text) ----
+function parseDaysToken(token) {
+  const t = token.toUpperCase();
+  const found = [];
+  let i = 0;
+  while (i < t.length) {
+    const two = t.substr(i, 2);
+    if (two === 'TH') { found.push('TH'); i += 2; continue; }
+    if (two === 'SU') { found.push('SU'); i += 2; continue; }
+    if (two === 'SA') { found.push('SA'); i += 2; continue; }
+    const one = t[i];
+    if (one === 'M') found.push('MO');
+    else if (one === 'T') found.push('TU');
+    else if (one === 'W') found.push('WE');
+    else if (one === 'F') found.push('FR');
+    i += 1;
+  }
+  return [...new Set(found)];
 }
 
-const pwInput = document.getElementById('sitePassword');
-pwInput.value = sessionStorage.getItem('sitePassword') || '';
-pwInput.addEventListener('input', () => sessionStorage.setItem('sitePassword', pwInput.value));
+function to24h(h, m, ap) {
+  h = parseInt(h, 10);
+  if (/pm/i.test(ap) && h !== 12) h += 12;
+  if (/am/i.test(ap) && h === 12) h = 0;
+  return String(h).padStart(2, '0') + ':' + m;
+}
+
+function parseScheduleText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const timeRe = /(\d{1,2}):(\d{2})\s*([AP]M)\s*[-–]\s*(\d{1,2}):(\d{2})\s*([AP]M)/i;
+  const results = [];
+  lines.forEach(line => {
+    const tm = line.match(timeRe);
+    if (!tm) return;
+    const before = line.slice(0, tm.index).trim();
+    const after = line.slice(tm.index + tm[0].length).trim();
+    const tokens = before.split(/\s+/);
+    let daysCode = [];
+    let dayTokenIdx = -1;
+    for (let i = tokens.length - 1; i >= 0; i--) {
+      if (/^[MTWHFSU]{1,7}$/i.test(tokens[i]) && tokens[i].length <= 5) {
+        const parsed = parseDaysToken(tokens[i]);
+        if (parsed.length > 0) { daysCode = parsed; dayTokenIdx = i; break; }
+      }
+    }
+    if (dayTokenIdx === -1) return;
+    const title = tokens.slice(0, dayTokenIdx).join(' ') || 'Untitled Course';
+    const location = after.split(/\s{2,}/)[0].trim() || after.trim();
+    results.push({
+      title,
+      days: daysCode,
+      start: to24h(tm[1], tm[2], tm[3]),
+      end: to24h(tm[4], tm[5], tm[6]),
+      location,
+    });
+  });
+  return results;
+}
+
+function applyParsedClasses(classes) {
+  if (classes.length === 0) {
+    setStatus('No classes recognized. Try a clearer screenshot, or paste the text instead.', 'err');
+  } else {
+    classes.forEach(c => addRow(c));
+    setStatus(`Extracted ${classes.length} class${classes.length === 1 ? '' : 'es'} — verify below.`, 'ok');
+  }
+}
 
 async function extractClasses() {
   if (!pendingFile) return;
-  if (!pwInput.value) {
-    setStatus('Enter the site password above first.', 'err');
-    return;
-  }
   const btn = document.getElementById('extractBtn');
   btn.disabled = true;
-  setStatus('Extracting classes...', 'info');
   try {
-    const base64 = await fileToBase64(pendingFile);
-    const resp = await fetch('/api/extract', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-site-password': pwInput.value },
-      body: JSON.stringify({ image: base64, mediaType: pendingFile.type }),
+    const { data: { text } } = await Tesseract.recognize(pendingFile, 'eng', {
+      logger: (m) => {
+        if (m.status === 'recognizing text') {
+          setStatus(`Reading screenshot... ${Math.round(m.progress * 100)}%`, 'info');
+        } else {
+          setStatus('Loading OCR engine...', 'info');
+        }
+      },
     });
-    if (!resp.ok) {
-      const body = await resp.json().catch(() => ({}));
-      setStatus(`Extraction failed (${resp.status}): ${body.error || 'unknown error'}`, 'err');
-      btn.disabled = false;
-      return;
-    }
-    const data = await resp.json();
-    const classes = data.classes || [];
-    if (classes.length === 0) {
-      setStatus('No classes found in that screenshot. Try a clearer capture.', 'err');
-    } else {
-      classes.forEach(c => addRow({ title: c.title, days: c.days, start: c.startTime, end: c.endTime, location: c.location }));
-      setStatus(`Extracted ${classes.length} class${classes.length===1?'':'es'} — verify below.`, 'ok');
-    }
+    applyParsedClasses(parseScheduleText(text));
   } catch (err) {
-    setStatus('Request failed: ' + err.message, 'err');
+    setStatus('OCR failed: ' + err.message, 'err');
   } finally {
     btn.disabled = false;
   }
 }
 
 document.getElementById('extractBtn').addEventListener('click', extractClasses);
+document.getElementById('parseTextBtn').addEventListener('click', () => {
+  applyParsedClasses(parseScheduleText(document.getElementById('pasteBox').value));
+});
 
 // ---- ICS generation ----
 function pad(n) { return String(n).padStart(2, '0'); }
