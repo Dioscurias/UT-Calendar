@@ -190,7 +190,13 @@
     </p>
     <div class="row-actions">
       <button onclick="buildQuickAddLinks()">Build "Add to Google Calendar" links</button>
+      <button onclick="openAllQuickAddLinks()">Open all in new tabs</button>
     </div>
+    <p class="hint" style="margin:4px 0 0">
+      "Open all in new tabs" opens one tab per class at once, each pre-filled — you still click Save in each (that
+      part has to be you; a page can't do it for you). Your browser may ask to allow pop-ups for this site the
+      first time since it's opening several tabs together.
+    </p>
     <div id="quickAddLinks" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
   </div>
 
@@ -759,6 +765,28 @@ function buildQuickAddLinks() {
 
   if (count === 0) {
     container.textContent = 'No valid classes — each row needs a start/end time and at least one day.';
+  }
+}
+
+function openAllQuickAddLinks() {
+  const container = document.getElementById('quickAddLinks');
+  if (!container.querySelector('a')) buildQuickAddLinks();
+  const links = Array.from(container.querySelectorAll('a'));
+  if (links.length === 0) return;
+
+  let blocked = 0;
+  links.forEach(link => {
+    const win = window.open(link.href, '_blank', 'noopener');
+    if (!win) blocked++;
+  });
+
+  const genStatus = document.getElementById('genStatus');
+  if (blocked > 0) {
+    genStatus.textContent = `Opened ${links.length - blocked}/${links.length} tabs — your browser blocked the rest as pop-ups. Allow pop-ups for this site and try again, or open the remaining links one by one below.`;
+    genStatus.className = 'status-err';
+  } else {
+    genStatus.textContent = `Opened ${links.length} tab${links.length === 1 ? '' : 's'} — click Save in each.`;
+    genStatus.className = 'status-ok';
   }
 }
 
