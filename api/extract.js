@@ -1,20 +1,13 @@
-import "dotenv/config";
-import express from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import path from "path";
-import { fileURLToPath } from "url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = process.env.PORT || 8787;
-
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.error("Missing ANTHROPIC_API_KEY. Copy .env.example to .env and fill it in.");
-  process.exit(1);
+let client;
+try {
+  client = new Anthropic();
+} catch {
+  client = null;
 }
-
-const client = new Anthropic();
 
 const ScheduleSchema = z.object({
   classes: z.array(
@@ -37,11 +30,20 @@ Extract every course that has a fixed weekly meeting time. For each one, give:
 
 Skip rows with no fixed meeting time (e.g. "TBA", fully asynchronous online courses, independent study). If a field truly isn't visible, use your best reading of the text rather than guessing wildly.`;
 
-const app = express();
-app.use(express.json({ limit: "10mb" }));
-app.use(express.static(path.join(__dirname, "public")));
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "method not allowed" });
+  }
 
-app.post("/extract", async (req, res) => {
+  if (!process.env.SITE_PASSWORD || req.headers["x-site-password"] !== process.env.SITE_PASSWORD) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+
+  if (!client) {
+    return res.status(500).json({ error: "ANTHROPIC_API_KEY is not configured on the server" });
+  }
+
   const { image, mediaType } = req.body || {};
   if (!image) return res.status(400).json({ error: "missing image" });
 
@@ -64,13 +66,9 @@ app.post("/extract", async (req, res) => {
     if (!response.parsed_output) {
       return res.status(502).json({ error: "model did not return parseable output" });
     }
-    res.json(response.parsed_output);
+    res.status(200).json(response.parsed_output);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || "extraction failed" });
   }
-});
-
-app.listen(PORT, "127.0.0.1", () => {
-  console.log(`Open http://127.0.0.1:${PORT} in your browser`);
-});
+}

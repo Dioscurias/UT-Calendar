@@ -108,6 +108,12 @@
   <p class="sub">Screenshot your class list, drop it below, verify the extracted classes, and download a calendar file for the whole semester.</p>
 
   <div class="card">
+    <h2>Site password</h2>
+    <p class="hint">This page is public; the password just stops strangers from spending your Anthropic API budget. Remembered for this browser tab.</p>
+    <input type="password" id="sitePassword" placeholder="Site password" style="max-width:260px">
+  </div>
+
+  <div class="card">
     <h2><span class="step-num">1</span> Add a screenshot</h2>
     <p class="hint">
       Log in to <code>utdirect.utexas.edu</code>, open your class list / schedule page, and take a screenshot
@@ -268,16 +274,24 @@ function fileToBase64(file) {
   });
 }
 
+const pwInput = document.getElementById('sitePassword');
+pwInput.value = sessionStorage.getItem('sitePassword') || '';
+pwInput.addEventListener('input', () => sessionStorage.setItem('sitePassword', pwInput.value));
+
 async function extractClasses() {
   if (!pendingFile) return;
+  if (!pwInput.value) {
+    setStatus('Enter the site password above first.', 'err');
+    return;
+  }
   const btn = document.getElementById('extractBtn');
   btn.disabled = true;
   setStatus('Extracting classes...', 'info');
   try {
     const base64 = await fileToBase64(pendingFile);
-    const resp = await fetch('/extract', {
+    const resp = await fetch('/api/extract', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-site-password': pwInput.value },
       body: JSON.stringify({ image: base64, mediaType: pendingFile.type }),
     });
     if (!resp.ok) {
