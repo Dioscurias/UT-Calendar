@@ -39,18 +39,11 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     line-height: 1.45;
   }
-  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
-  h1 { font-size: 1.6rem; margin-bottom: 4px; }
-  .sub { color: var(--muted); margin-top: 0; margin-bottom: 32px; font-size: 0.95rem; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 22px 24px; margin-bottom: 20px; }
-  .card h2 { font-size: 1.05rem; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
-  .step-num {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 22px; height: 22px; border-radius: 50%;
-    background: var(--accent); color: var(--accent-ink);
-    font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
-  }
-  .hint { color: var(--muted); font-size: 0.85rem; margin: 4px 0 14px; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 1.7rem; margin-bottom: 6px; text-align: center; }
+  .sub { color: var(--muted); margin-top: 0; margin-bottom: 32px; font-size: 1rem; text-align: center; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; margin-bottom: 18px; }
+  .hint { color: var(--muted); font-size: 0.85rem; margin: 4px 0 0; }
   button {
     font-family: inherit; font-size: 0.85rem; font-weight: 600;
     border-radius: 7px; padding: 9px 16px; border: 1px solid var(--border);
@@ -58,22 +51,25 @@
   }
   button:hover { filter: brightness(1.05); }
   button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.hero {
+    display: block; width: 100%; padding: 18px; font-size: 1.05rem; border-radius: 12px;
+  }
   button.small { padding: 5px 10px; font-size: 0.78rem; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   .dropzone {
     border: 2px dashed var(--border);
-    border-radius: 10px;
-    padding: 28px;
+    border-radius: 12px;
+    padding: 40px 24px;
     text-align: center;
-    color: var(--muted);
     cursor: pointer;
     transition: border-color 0.15s, background 0.15s;
   }
   .dropzone.drag { border-color: var(--accent); background: var(--field-bg); }
-  .dropzone strong { color: var(--ink); }
-  .thumb { max-width: 100%; max-height: 220px; border-radius: 8px; border: 1px solid var(--border); margin-top: 12px; display: none; }
+  .dropzone .big { font-size: 1.05rem; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+  .dropzone .small { color: var(--muted); font-size: 0.85rem; }
+  .thumb { max-width: 100%; max-height: 180px; border-radius: 8px; border: 1px solid var(--border); margin-top: 14px; display: none; }
   .row-actions { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 0.85rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 0.85rem; }
   th { text-align: left; color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; padding: 0 6px 8px; }
   td { padding: 6px 6px; vertical-align: middle; }
   input[type=text], input[type=time], input[type=date] {
@@ -90,47 +86,41 @@
   .day-toggle.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .del-btn { background: transparent; border: none; color: var(--muted); font-size: 1rem; cursor: pointer; padding: 4px 8px; }
   .del-btn:hover { color: var(--err); }
-  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
+  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
   .field label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 5px; font-weight: 600; }
   .excl-wrap { grid-column: 1 / -1; }
-  #status { font-size: 0.85rem; font-weight: 600; }
+  #status, #genStatus { font-size: 0.85rem; font-weight: 600; display: block; margin-top: 10px; }
   .status-ok { color: var(--ok); }
   .status-err { color: var(--err); }
   .status-info { color: var(--muted); }
-  ol.steps { margin: 0; padding-left: 20px; font-size: 0.88rem; }
+  ol.steps { margin: 0; padding-left: 20px; font-size: 0.85rem; }
   ol.steps li { margin-bottom: 6px; }
   code { background: var(--field-bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 0.85em; }
+  details > summary { cursor: pointer; font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+  details[open] > summary { margin-bottom: 10px; }
+  .center { text-align: center; }
+  h2.title { font-size: 1rem; margin: 0 0 12px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>UT Class Schedule → Google Calendar</h1>
-  <p class="sub">Screenshot your class list, drop it below, verify the extracted classes, and download a calendar file for the whole semester. Runs entirely in your browser — no server, no account, no AI involved.</p>
+  <h1>UT Schedule → Google Calendar</h1>
+  <p class="sub">Screenshot your class list. We'll add it to your calendar.</p>
 
   <div class="card">
-    <h2><span class="step-num">1</span> Add a screenshot</h2>
-    <p class="hint">
-      Log in to <code>utdirect.utexas.edu</code>, open your class list / schedule page, and take a screenshot
-      (Mac: <code>⌘⇧4</code> then drag, or <code>⌘⌃⇧4</code> to copy straight to your clipboard). Make sure your
-      whole schedule is visible before capturing. Text is read with OCR (optical character recognition), which
-      struggles with gridded/bordered tables — it does best on courses with a single meeting pattern; a course
-      with two separate meeting times (e.g. lecture + discussion) may come through with a placeholder title you'll
-      need to fill in by hand, even though its days/times/rooms are still correct. If a screenshot doesn't parse
-      well, the "paste text instead" option below is more reliable since it reads UT's actual data, not pixels.
-    </p>
     <div class="dropzone" id="dropzone">
-      <div><strong>Click to choose a file</strong>, drag one here, or paste (⌘V) a screenshot from your clipboard</div>
+      <div class="big">Drop your schedule screenshot here</div>
+      <div class="small">or click to choose a file, or paste (⌘V)</div>
       <img class="thumb" id="thumb" alt="Screenshot preview">
     </div>
     <input type="file" id="fileInput" accept="image/*" style="display:none">
-    <div class="row-actions">
-      <button class="primary" id="extractBtn" disabled>Extract classes from screenshot</button>
-      <span id="status" class="status-info"></span>
-    </div>
-    <details style="margin-top:14px">
-      <summary class="hint" style="cursor:pointer">Or paste the schedule text directly instead</summary>
-      <p class="hint" style="margin-top:10px">More reliable than OCR if you can just select and copy the text on the page.</p>
-      <textarea id="pasteBox" style="width:100%;min-height:90px;background:var(--field-bg);color:var(--ink);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.8rem" placeholder="C S 313E  52625  Elements of Software Design  MWF  9:00AM-9:50AM  GDC 2.216"></textarea>
+    <span id="status" class="status-info center"></span>
+    <details style="margin-top:16px">
+      <summary>Screenshot not working? Paste the text instead</summary>
+      <p class="hint" style="margin-bottom:8px">
+        On <code>utdirect.utexas.edu</code>, select and copy your schedule's text, then paste it below.
+      </p>
+      <textarea id="pasteBox" style="width:100%;min-height:90px;background:var(--field-bg);color:var(--ink);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.8rem" placeholder="Paste your schedule text here"></textarea>
       <div class="row-actions">
         <button id="parseTextBtn">Parse pasted text</button>
       </div>
@@ -138,8 +128,8 @@
   </div>
 
   <div class="card">
-    <h2><span class="step-num">2</span> Verify / edit your classes</h2>
-    <p class="hint">Check what got extracted — OCR can occasionally misread a time or room. Click day letters to toggle.</p>
+    <h2 class="title">Your classes</h2>
+    <p class="hint" style="margin-bottom:10px">Check this looks right. Tap a day letter to fix it, ✕ to remove a row.</p>
     <table>
       <thead>
         <tr>
@@ -154,67 +144,56 @@
       <tbody id="classRows"></tbody>
     </table>
     <div class="row-actions">
-      <button onclick="addRow()">+ Add row</button>
+      <button class="small" onclick="addRow()">+ Add row</button>
     </div>
+    <details style="margin-top:16px">
+      <summary>Semester dates (Fall 2026 defaults)</summary>
+      <div class="settings-grid">
+        <div class="field">
+          <label for="semStart">First day of classes</label>
+          <input type="date" id="semStart" value="2026-08-24">
+        </div>
+        <div class="field">
+          <label for="semEnd">Last day of classes</label>
+          <input type="date" id="semEnd" value="2026-12-07">
+        </div>
+        <div class="field excl-wrap">
+          <label for="exclDates">No-class dates (holidays / breaks)</label>
+          <input type="text" id="exclDates" value="2026-09-07, 2026-11-23, 2026-11-24, 2026-11-25, 2026-11-26, 2026-11-27, 2026-11-28">
+        </div>
+      </div>
+    </details>
   </div>
 
-  <div class="card">
-    <h2><span class="step-num">3</span> Semester dates</h2>
-    <p class="hint">Defaults are UT Austin's official Fall 2026 dates. Adjust if you're on a different semester/campus.</p>
-    <div class="settings-grid">
-      <div class="field">
-        <label for="semStart">First day of classes</label>
-        <input type="date" id="semStart" value="2026-08-24">
+  <div class="card center">
+    <button class="primary hero" onclick="openAllQuickAddLinks()">Add all classes to Google Calendar</button>
+    <p class="hint">Opens one tab per class, pre-filled — click Save in each.</p>
+    <span id="genStatus" class="status-info"></span>
+    <div id="quickAddLinks" style="margin-top:10px;display:flex;flex-direction:column;gap:6px;text-align:left"></div>
+
+    <details style="margin-top:18px;text-align:left">
+      <summary>Prefer a calendar file instead?</summary>
+      <div class="row-actions">
+        <button onclick="generateICS()">Download calendar file (.ics)</button>
       </div>
-      <div class="field">
-        <label for="semEnd">Last day of classes</label>
-        <input type="date" id="semEnd" value="2026-12-07">
-      </div>
-      <div class="field excl-wrap">
-        <label for="exclDates">No-class dates (holidays / breaks — comma-separated, YYYY-MM-DD)</label>
-        <input type="text" id="exclDates" value="2026-09-07, 2026-11-23, 2026-11-24, 2026-11-25, 2026-11-26, 2026-11-27, 2026-11-28">
-      </div>
-    </div>
+      <ol class="steps" style="margin-top:12px">
+        <li>Open <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener">calendar.google.com → Settings → Import & export</a>.</li>
+        <li>Under "Import", select the <code>.ics</code> file you downloaded and choose a calendar.</li>
+        <li>Click Import — every class is added at once.</li>
+      </ol>
+    </details>
+
+    <details style="margin-top:12px;text-align:left">
+      <summary>Give each class its own color</summary>
+      <p class="hint" style="margin-top:8px">
+        Neither method above carries per-class colors automatically. After adding your classes, click any
+        occurrence of one, choose "All events", and pick a color — that recolors its whole recurring series at once.
+        Repeat per class.
+      </p>
+    </details>
   </div>
 
-  <div class="card">
-    <h2><span class="step-num">4</span> Generate</h2>
-    <div class="row-actions">
-      <button class="primary" onclick="generateICS()">Download calendar file (.ics)</button>
-      <span id="genStatus" class="status-info"></span>
-    </div>
-    <p class="hint" style="margin-top:14px;margin-bottom:6px">
-      Browsers won't let a page silently pick a file and import it into another site for you — that's a deliberate
-      security boundary, not something this tool can route around. The closest real equivalent: Google Calendar's
-      own "add event" link, pre-filled and opened in a new tab, where you just click Save.
-    </p>
-    <div class="row-actions">
-      <button onclick="buildQuickAddLinks()">Build "Add to Google Calendar" links</button>
-      <button onclick="openAllQuickAddLinks()">Open all in new tabs</button>
-    </div>
-    <p class="hint" style="margin:4px 0 0">
-      "Open all in new tabs" opens one tab per class at once, each pre-filled — you still click Save in each (that
-      part has to be you; a page can't do it for you). Your browser may ask to allow pop-ups for this site the
-      first time since it's opening several tabs together.
-    </p>
-    <div id="quickAddLinks" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
-  </div>
-
-  <div class="card">
-    <h2>Import into Google Calendar</h2>
-    <ol class="steps">
-      <li>Open <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener">calendar.google.com → Settings → Import & export</a>.</li>
-      <li>Under "Import", click <em>Select file from your computer</em> and choose the <code>.ics</code> file you just downloaded.</li>
-      <li>Pick which calendar to add the classes to (consider creating a new one called "Fall 2026 Classes" first, so it's easy to remove later).</li>
-      <li>Click Import.</li>
-      <li>
-        To give each class its own color: <code>.ics</code> import doesn't carry colors, so Google Calendar gives every
-        imported event the destination calendar's color by default. Click any occurrence of a class, choose
-        <strong>"All events"</strong> when it asks, and pick a color — that recolors the whole recurring series in
-        one go. Repeat once per class (not per occurrence).
-      </li>
-    </ol>
-  </div>
+  <p class="hint center" style="margin-top:24px">A Nikoloz Sharvashidze Production</p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -253,7 +232,7 @@ function escapeAttr(s) {
 function setStatus(text, kind) {
   const el = document.getElementById('status');
   el.textContent = text;
-  el.className = kind === 'err' ? 'status-err' : kind === 'ok' ? 'status-ok' : 'status-info';
+  el.className = 'center ' + (kind === 'err' ? 'status-err' : kind === 'ok' ? 'status-ok' : 'status-info');
 }
 
 // ---- Screenshot capture (file picker, drag-drop, clipboard paste) ----
@@ -265,8 +244,7 @@ function setPendingFile(file) {
   const thumb = document.getElementById('thumb');
   thumb.src = URL.createObjectURL(file);
   thumb.style.display = 'block';
-  document.getElementById('extractBtn').disabled = false;
-  setStatus('Screenshot ready.', 'ok');
+  extractClasses();
 }
 
 const dropzone = document.getElementById('dropzone');
@@ -472,7 +450,7 @@ function applyParsedClasses(classes) {
     }
 
     classes.forEach(c => addRow(c));
-    setStatus(`Extracted ${classes.length} class${classes.length === 1 ? '' : 'es'} — verify below.`, 'ok');
+    setStatus(`Found ${classes.length} class${classes.length === 1 ? '' : 'es'} — check the list below.`, 'ok');
   }
 }
 
@@ -534,8 +512,6 @@ async function removeGridLines(file) {
 
 async function extractClasses() {
   if (!pendingFile) return;
-  const btn = document.getElementById('extractBtn');
-  btn.disabled = true;
   try {
     setStatus('Removing table borders...', 'info');
     const cleaned = await removeGridLines(pendingFile);
@@ -551,12 +527,9 @@ async function extractClasses() {
     applyParsedClasses(parseScheduleText(text));
   } catch (err) {
     setStatus('OCR failed: ' + err.message, 'err');
-  } finally {
-    btn.disabled = false;
   }
 }
 
-document.getElementById('extractBtn').addEventListener('click', extractClasses);
 document.getElementById('parseTextBtn').addEventListener('click', () => {
   applyParsedClasses(parseScheduleText(document.getElementById('pasteBox').value));
 });
@@ -708,7 +681,7 @@ function buildQuickAddLinks() {
   const semEndStr = document.getElementById('semEnd').value;
   if (!semStartStr || !semEndStr) {
     container.textContent = 'Set both semester start and end dates first.';
-    return;
+    return [];
   }
   const semStart = parseDateOnly(semStartStr);
   const semEnd = parseDateOnly(semEndStr);
@@ -766,12 +739,12 @@ function buildQuickAddLinks() {
   if (count === 0) {
     container.textContent = 'No valid classes — each row needs a start/end time and at least one day.';
   }
+  return Array.from(container.querySelectorAll('a'));
 }
 
 function openAllQuickAddLinks() {
   const container = document.getElementById('quickAddLinks');
-  if (!container.querySelector('a')) buildQuickAddLinks();
-  const links = Array.from(container.querySelectorAll('a'));
+  const links = container.querySelector('a') ? Array.from(container.querySelectorAll('a')) : buildQuickAddLinks();
   if (links.length === 0) return;
 
   let blocked = 0;
@@ -782,7 +755,7 @@ function openAllQuickAddLinks() {
 
   const genStatus = document.getElementById('genStatus');
   if (blocked > 0) {
-    genStatus.textContent = `Opened ${links.length - blocked}/${links.length} tabs — your browser blocked the rest as pop-ups. Allow pop-ups for this site and try again, or open the remaining links one by one below.`;
+    genStatus.textContent = `Opened ${links.length - blocked}/${links.length} tabs — your browser blocked the rest as pop-ups. Allow pop-ups for this site and try again, or click a link below.`;
     genStatus.className = 'status-err';
   } else {
     genStatus.textContent = `Opened ${links.length} tab${links.length === 1 ? '' : 's'} — click Save in each.`;
