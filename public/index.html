@@ -417,7 +417,7 @@ function parseLinesHeuristic(text) {
     }
     location = cleanLocation(location);
 
-    const title = tokens.slice(0, titleEnd).join(' ') || 'Untitled Course';
+    const title = tokens.slice(0, titleEnd).join(' ').trim();
     results.push({
       title,
       days: daysCode,
@@ -439,6 +439,16 @@ function applyParsedClasses(classes) {
   if (classes.length === 0) {
     setStatus('No classes recognized. Try a clearer screenshot, or paste the text instead.', 'err');
   } else {
+    // A course with more than one meeting pattern (lecture + a separate
+    // discussion time) always emits its patterns consecutively, and only the
+    // first one reliably keeps its title through OCR/parsing. A blank title
+    // right after a titled row is that same course's second pattern, not a
+    // new course — inherit the title instead of leaving it for manual entry.
+    let lastTitle = '';
+    classes.forEach(c => {
+      if (!c.title) c.title = lastTitle || 'Untitled Course';
+      else lastTitle = c.title;
+    });
     classes.forEach(c => addRow(c));
     setStatus(`Extracted ${classes.length} class${classes.length === 1 ? '' : 'es'} — verify below.`, 'ok');
   }
