@@ -316,6 +316,14 @@ function to24h(h, m, ap) {
 
 const TIME_RE = /(\d{1,2}):(\d{2})\s*([AP]M)\s*[-–]\s*(\d{1,2}):(\d{2})\s*([AP]M)/i;
 
+// OCR on a stray border-line remnant near an empty cell occasionally leaves a
+// single punctuation character (|, _, a dash) behind instead of nothing.
+// Strip that noise; if nothing alphanumeric survives, the location is empty.
+function cleanLocation(s) {
+  const cleaned = String(s || '').replace(/[|_—–-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return /[A-Za-z0-9]/.test(cleaned) ? cleaned : '';
+}
+
 // UT Direct's class list table copies as tab-separated columns (Unique, Course,
 // Title, Bldg, Room, Days, Time, Remarks). A course with more than one meeting
 // pattern (e.g. lecture + separate discussion time) has multiple stacked values
@@ -361,7 +369,7 @@ function parseUtDirectTsv(text) {
         days: dayCodes,
         start: to24h(tm[1], tm[2], tm[3]),
         end: to24h(tm[4], tm[5], tm[6]),
-        location: `${bldg[i] || ''} ${room[i] || ''}`.trim(),
+        location: cleanLocation(`${bldg[i] || ''} ${room[i] || ''}`),
       });
     }
   }
@@ -407,6 +415,7 @@ function parseLinesHeuristic(text) {
     if (!location) {
       location = after.split(/\s{2,}/)[0].trim() || after.trim();
     }
+    location = cleanLocation(location);
 
     const title = tokens.slice(0, titleEnd).join(' ') || 'Untitled Course';
     results.push({
