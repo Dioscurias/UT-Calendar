@@ -18,3 +18,4 @@ It's a plain static site — open `public/index.html` directly in a browser, or 
 6. Confirm semester dates (defaults are UT's official Fall 2026 calendar: classes Aug 24–Dec 7, Labor Day and Thanksgiving break pre-filled as excluded)
 7. **Download calendar file (.ics)**
 8. Import at [calendar.google.com → Settings → Import & export](https://calendar.google.com/calendar/u/0/r/settings/export)
+9. To give each class a different color: `.ics` import doesn't carry per-event colors, so every imported event just takes the destination calendar's color. Click any occurrence of a class, choose "All events", and pick a color — that recolors the whole recurring series at once. Repeat per class.
