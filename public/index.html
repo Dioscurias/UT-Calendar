@@ -437,9 +437,12 @@ function applyParsedClasses(classes) {
 
 // Grid/table borders (like UT Direct's class list) confuse Tesseract's layout
 // analysis badly — it silently drops whole columns adjacent to border lines.
-// Text never forms a long straight run of dark pixels the way a ruled line
-// does, so scanning for rows/columns that are mostly one continuous dark run
-// and whiting them out removes the borders while leaving text intact.
+// Text never fills anywhere near a whole row/column with dark pixels the way
+// a ruled line does — measured on a real screenshot, border rows sit at
+// 94-96% dark-pixel density, text rows top out around 40%. A DENSITY check
+// (not "longest unbroken run", which anti-aliasing at Retina resolution
+// breaks into many short segments that individually look nothing like a
+// line) reliably tells real borders apart from text and erases just those.
 async function removeGridLines(file) {
   const img = new Image();
   const url = URL.createObjectURL(file);
@@ -461,23 +464,19 @@ async function removeGridLines(file) {
     const i = (y * w + x) * 4;
     return data[i] < 200 || data[i + 1] < 200 || data[i + 2] < 200;
   };
-  const LINE_FRACTION = 0.6;
+  const LINE_DENSITY = 0.7;
 
   const rowIsLine = new Uint8Array(h);
   for (let y = 0; y < h; y++) {
-    let run = 0, maxRun = 0;
-    for (let x = 0; x < w; x++) {
-      if (isDark(x, y)) { run++; if (run > maxRun) maxRun = run; } else run = 0;
-    }
-    if (maxRun > w * LINE_FRACTION) rowIsLine[y] = 1;
+    let count = 0;
+    for (let x = 0; x < w; x++) if (isDark(x, y)) count++;
+    if (count / w > LINE_DENSITY) rowIsLine[y] = 1;
   }
   const colIsLine = new Uint8Array(w);
   for (let x = 0; x < w; x++) {
-    let run = 0, maxRun = 0;
-    for (let y = 0; y < h; y++) {
-      if (isDark(x, y)) { run++; if (run > maxRun) maxRun = run; } else run = 0;
-    }
-    if (maxRun > h * LINE_FRACTION) colIsLine[x] = 1;
+    let count = 0;
+    for (let y = 0; y < h; y++) if (isDark(x, y)) count++;
+    if (count / h > LINE_DENSITY) colIsLine[x] = 1;
   }
 
   for (let y = 0; y < h; y++) {
