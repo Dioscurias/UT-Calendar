@@ -112,8 +112,11 @@
     <p class="hint">
       Log in to <code>utdirect.utexas.edu</code>, open your class list / schedule page, and take a screenshot
       (Mac: <code>⌘⇧4</code> then drag, or <code>⌘⌃⇧4</code> to copy straight to your clipboard). Make sure your
-      whole schedule is visible before capturing. Text is read with OCR (optical character recognition) —
-      it can misread the occasional character, so double-check the table below.
+      whole schedule is visible before capturing. Text is read with OCR (optical character recognition), which
+      struggles with gridded/bordered tables — it does best on courses with a single meeting pattern; a course
+      with two separate meeting times (e.g. lecture + discussion) may come through with a placeholder title you'll
+      need to fill in by hand, even though its days/times/rooms are still correct. If a screenshot doesn't parse
+      well, the "paste text instead" option below is more reliable since it reads UT's actual data, not pixels.
     </p>
     <div class="dropzone" id="dropzone">
       <div><strong>Click to choose a file</strong>, drag one here, or paste (⌘V) a screenshot from your clipboard</div>
@@ -385,8 +388,27 @@ function parseLinesHeuristic(text) {
       }
     }
     if (dayTokenIdx === -1) return;
-    const title = tokens.slice(0, dayTokenIdx).join(' ') || 'Untitled Course';
-    const location = after.split(/\s{2,}/)[0].trim() || after.trim();
+
+    // UT Direct's real column order is Title, Bldg, Room, Days, Time — so the
+    // two tokens right before the days-token are often a building code
+    // (short, letters only) followed by a room number (contains a digit).
+    // Peel those off as location instead of leaving them stuck in the title.
+    let titleEnd = dayTokenIdx;
+    let location = '';
+    const preDayTokens = tokens.slice(0, dayTokenIdx);
+    if (preDayTokens.length >= 2) {
+      const room = preDayTokens[preDayTokens.length - 1];
+      const bldg = preDayTokens[preDayTokens.length - 2];
+      if (/\d/.test(room) && /^[A-Za-z]{2,6}$/.test(bldg)) {
+        location = `${bldg} ${room}`;
+        titleEnd = dayTokenIdx - 2;
+      }
+    }
+    if (!location) {
+      location = after.split(/\s{2,}/)[0].trim() || after.trim();
+    }
+
+    const title = tokens.slice(0, titleEnd).join(' ') || 'Untitled Course';
     results.push({
       title,
       days: daysCode,
@@ -413,12 +435,71 @@ function applyParsedClasses(classes) {
   }
 }
 
+// Grid/table borders (like UT Direct's class list) confuse Tesseract's layout
+// analysis badly — it silently drops whole columns adjacent to border lines.
+// Text never forms a long straight run of dark pixels the way a ruled line
+// does, so scanning for rows/columns that are mostly one continuous dark run
+// and whiting them out removes the borders while leaving text intact.
+async function removeGridLines(file) {
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  try {
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const data = imgData.data;
+  const isDark = (x, y) => {
+    const i = (y * w + x) * 4;
+    return data[i] < 200 || data[i + 1] < 200 || data[i + 2] < 200;
+  };
+  const LINE_FRACTION = 0.6;
+
+  const rowIsLine = new Uint8Array(h);
+  for (let y = 0; y < h; y++) {
+    let run = 0, maxRun = 0;
+    for (let x = 0; x < w; x++) {
+      if (isDark(x, y)) { run++; if (run > maxRun) maxRun = run; } else run = 0;
+    }
+    if (maxRun > w * LINE_FRACTION) rowIsLine[y] = 1;
+  }
+  const colIsLine = new Uint8Array(w);
+  for (let x = 0; x < w; x++) {
+    let run = 0, maxRun = 0;
+    for (let y = 0; y < h; y++) {
+      if (isDark(x, y)) { run++; if (run > maxRun) maxRun = run; } else run = 0;
+    }
+    if (maxRun > h * LINE_FRACTION) colIsLine[x] = 1;
+  }
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (rowIsLine[y] || colIsLine[x]) {
+        const i = (y * w + x) * 4;
+        data[i] = data[i + 1] = data[i + 2] = 255;
+      }
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+  return new Promise(res => canvas.toBlob(res, 'image/png'));
+}
+
 async function extractClasses() {
   if (!pendingFile) return;
   const btn = document.getElementById('extractBtn');
   btn.disabled = true;
   try {
-    const { data: { text } } = await Tesseract.recognize(pendingFile, 'eng', {
+    setStatus('Removing table borders...', 'info');
+    const cleaned = await removeGridLines(pendingFile);
+    const { data: { text } } = await Tesseract.recognize(cleaned, 'eng', {
       logger: (m) => {
         if (m.status === 'recognizing text') {
           setStatus(`Reading screenshot... ${Math.round(m.progress * 100)}%`, 'info');
