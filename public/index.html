@@ -180,6 +180,15 @@
       <button class="primary" onclick="generateICS()">Download calendar file (.ics)</button>
       <span id="genStatus" class="status-info"></span>
     </div>
+    <p class="hint" style="margin-top:14px;margin-bottom:6px">
+      Browsers won't let a page silently pick a file and import it into another site for you — that's a deliberate
+      security boundary, not something this tool can route around. The closest real equivalent: Google Calendar's
+      own "add event" link, pre-filled and opened in a new tab, where you just click Save.
+    </p>
+    <div class="row-actions">
+      <button onclick="buildQuickAddLinks()">Build "Add to Google Calendar" links</button>
+    </div>
+    <div id="quickAddLinks" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
   </div>
 
   <div class="card">
@@ -567,6 +576,75 @@ END:VCALENDAR`;
   URL.revokeObjectURL(url);
 
   setGen(`Downloaded fall-2026-classes.ics with ${count} class${count===1?'':'es'}.`, 'ok');
+}
+
+// ---- Google Calendar "quick add" links (one per class, opens pre-filled) ----
+function buildQuickAddLinks() {
+  const container = document.getElementById('quickAddLinks');
+  container.innerHTML = '';
+
+  const semStartStr = document.getElementById('semStart').value;
+  const semEndStr = document.getElementById('semEnd').value;
+  if (!semStartStr || !semEndStr) {
+    container.textContent = 'Set both semester start and end dates first.';
+    return;
+  }
+  const semStart = parseDateOnly(semStartStr);
+  const semEnd = parseDateOnly(semEndStr);
+  const exclDates = document.getElementById('exclDates').value
+    .split(',').map(s => s.trim()).filter(Boolean).map(parseDateOnly);
+  const untilStr = fmtDateUTC(addDaysUTC(semEnd, 2)) + 'T000000Z';
+
+  const rows = Array.from(document.querySelectorAll('#classRows tr'));
+  let count = 0;
+
+  rows.forEach(tr => {
+    const inputs = tr.querySelectorAll('input[type=text]');
+    const title = inputs[0].value.trim() || 'Class';
+    const location = inputs[1].value.trim();
+    const timeInputs = tr.querySelectorAll('input[type=time]');
+    const start = timeInputs[0].value;
+    const end = timeInputs[1].value;
+    const dayCodes = Array.from(tr.querySelectorAll('.day-toggle.on')).map(b => b.dataset.code);
+    if (!start || !end || dayCodes.length === 0) return;
+
+    const first = firstOccurrence(semStart, dayCodes);
+    const [sh, sm] = start.split(':');
+    const [eh, em] = end.split(':');
+    const dtStart = `${fmtDateUTC(first)}T${sh}${sm}00`;
+    const dtEnd = `${fmtDateUTC(first)}T${eh}${em}00`;
+    const byday = dayCodes.join(',');
+
+    let recur = `RRULE:FREQ=WEEKLY;BYDAY=${byday};UNTIL=${untilStr}`;
+    const exdateLines = exclDates
+      .filter(ed => dayCodes.includes(Object.keys(DAY_INDEX).find(k => DAY_INDEX[k] === ed.getUTCDay())))
+      .filter(ed => ed.getTime() >= first.getTime() && ed.getTime() <= semEnd.getTime())
+      .map(ed => `EXDATE;TZID=America/Chicago:${fmtDateUTC(ed)}T${sh}${sm}00`);
+    if (exdateLines.length) recur += '\n' + exdateLines.join('\n');
+
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: title,
+      dates: `${dtStart}/${dtEnd}`,
+      location: location,
+      ctz: 'America/Chicago',
+      recur: recur,
+    });
+
+    const dayLabels = DAY_DEFS.filter(d => dayCodes.includes(d.code)).map(d => d.label).join('/');
+    const link = document.createElement('a');
+    link.href = `https://calendar.google.com/calendar/render?${params.toString()}`;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = `Add "${title}" (${dayLabels} ${start}) to Google Calendar`;
+    link.style.cssText = 'display:inline-block;padding:8px 14px;border-radius:7px;border:1px solid var(--border);background:var(--field-bg);color:var(--ink);text-decoration:none;font-size:0.85rem;font-weight:600;width:fit-content';
+    container.appendChild(link);
+    count++;
+  });
+
+  if (count === 0) {
+    container.textContent = 'No valid classes — each row needs a start/end time and at least one day.';
+  }
 }
 
 addRow();
